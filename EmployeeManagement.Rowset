@@ -1,0 +1,194 @@
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetProvider;
+import java.sql.*;
+import java.util.Scanner;
+
+public class EmployeeManagementRowSet {
+    private static final String DB_URL = "jdbc:postgresql://localhost:5432/your_database";
+    private static final String USER = "your_username";
+    private static final String PASSWORD = "your_password";
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int choice;
+
+        do {
+            System.out.println("-----------------------");
+            System.out.println("1. Create");
+            System.out.println("2. Display");
+            System.out.println("3. Appraisal");
+            System.out.println("4. Search");
+            System.out.println("5. Remove");
+            System.out.println("6. Exit");
+            System.out.println("-----------------------");
+            System.out.print("Enter choice: ");
+            choice = scanner.nextInt();
+            scanner.nextLine();  // Consume newline
+
+            switch (choice) {
+                case 1 -> createEmployee(scanner);
+                case 2 -> displayEmployees();
+                case 3 -> updateSalary(scanner);
+                case 4 -> searchByDesignation(scanner);
+                case 5 -> removeEmployee(scanner);
+                case 6 -> System.out.println("Exiting...");
+                default -> System.out.println("Invalid choice, try again.");
+            }
+        } while (choice != 6);
+
+        scanner.close();
+    }
+
+    // ---------------- CREATE EMPLOYEE ----------------
+    private static void createEmployee(Scanner scanner) {
+        try (CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet()) {
+            rowSet.setUrl(DB_URL);
+            rowSet.setUsername(USER);
+            rowSet.setPassword(PASSWORD);
+
+            System.out.println("Enter Employee Details:");
+            System.out.print("ID: ");
+            int eid = scanner.nextInt();
+            scanner.nextLine();
+            System.out.print("Name: ");
+            String name = scanner.nextLine();
+            System.out.print("Age: ");
+            int age = scanner.nextInt();
+            System.out.print("Salary: ");
+            double salary = scanner.nextDouble();
+            scanner.nextLine();
+            System.out.print("Designation: ");
+            String designation = scanner.nextLine();
+            System.out.print("Department: ");
+            String department = scanner.nextLine();
+
+            rowSet.setCommand("SELECT * FROM EMPLOYEE WHERE 1=0");  // Fetch empty schema
+            rowSet.execute();
+
+            rowSet.moveToInsertRow();
+            rowSet.updateInt("EID", eid);
+            rowSet.updateString("NAME", name);
+            rowSet.updateInt("AGE", age);
+            rowSet.updateDouble("SALARY", salary);
+            rowSet.updateString("DESIGNATION", designation);
+            rowSet.updateString("DEPARTMENT", department);
+            rowSet.insertRow();
+
+            rowSet.moveToCurrentRow();
+            rowSet.acceptChanges(); // Sync changes to DB
+
+            System.out.println("Employee added successfully!");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- DISPLAY EMPLOYEES ----------------
+    private static void displayEmployees() {
+        try (CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet()) {
+            rowSet.setUrl(DB_URL);
+            rowSet.setUsername(USER);
+            rowSet.setPassword(PASSWORD);
+            rowSet.setCommand("SELECT * FROM EMPLOYEE");
+            rowSet.execute();
+
+            System.out.println("\nEmployee List:");
+            while (rowSet.next()) {
+                System.out.println(rowSet.getInt("EID") + " | " +
+                        rowSet.getString("NAME") + " | " +
+                        rowSet.getInt("AGE") + " | " +
+                        rowSet.getDouble("SALARY") + " | " +
+                        rowSet.getString("DESIGNATION") + " | " +
+                        rowSet.getString("DEPARTMENT"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- UPDATE SALARY (APPRAISAL) ----------------
+    private static void updateSalary(Scanner scanner) {
+        try (CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet()) {
+            rowSet.setUrl(DB_URL);
+            rowSet.setUsername(USER);
+            rowSet.setPassword(PASSWORD);
+
+            System.out.print("Enter Employee ID for Appraisal: ");
+            int eid = scanner.nextInt();
+            scanner.nextLine();
+            System.out.print("Enter salary increment/decrement (e.g., +500, -200): ");
+            double change = scanner.nextDouble();
+            scanner.nextLine();
+
+            rowSet.setCommand("SELECT * FROM EMPLOYEE WHERE EID = ?");
+            rowSet.setInt(1, eid);
+            rowSet.execute();
+
+            if (rowSet.next()) {
+                double newSalary = rowSet.getDouble("SALARY") + change;
+                rowSet.updateDouble("SALARY", newSalary);
+                rowSet.updateRow();
+                rowSet.acceptChanges();
+                System.out.println("Salary updated successfully!");
+            } else {
+                System.out.println("Employee not found.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- SEARCH EMPLOYEE BY DESIGNATION ----------------
+    private static void searchByDesignation(Scanner scanner) {
+        try (CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet()) {
+            rowSet.setUrl(DB_URL);
+            rowSet.setUsername(USER);
+            rowSet.setPassword(PASSWORD);
+
+            System.out.print("Enter Designation to Search: ");
+            String designation = scanner.nextLine();
+
+            rowSet.setCommand("SELECT * FROM EMPLOYEE WHERE DESIGNATION = ?");
+            rowSet.setString(1, designation);
+            rowSet.execute();
+
+            System.out.println("\nMatching Employees:");
+            while (rowSet.next()) {
+                System.out.println(rowSet.getInt("EID") + " | " +
+                        rowSet.getString("NAME") + " | " +
+                        rowSet.getInt("AGE") + " | " +
+                        rowSet.getDouble("SALARY") + " | " +
+                        rowSet.getString("DEPARTMENT"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- REMOVE EMPLOYEE ----------------
+    private static void removeEmployee(Scanner scanner) {
+        try (CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet()) {
+            rowSet.setUrl(DB_URL);
+            rowSet.setUsername(USER);
+            rowSet.setPassword(PASSWORD);
+
+            System.out.print("Enter Employee ID to Remove: ");
+            int eid = scanner.nextInt();
+            scanner.nextLine();
+
+            rowSet.setCommand("SELECT * FROM EMPLOYEE WHERE EID = ?");
+            rowSet.setInt(1, eid);
+            rowSet.execute();
+
+            if (rowSet.next()) {
+                rowSet.deleteRow();
+                rowSet.acceptChanges();
+                System.out.println("Employee removed successfully!");
+            } else {
+                System.out.println("Employee not found.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
