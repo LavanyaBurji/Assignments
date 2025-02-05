@@ -1,0 +1,45 @@
+-- Step 1: Enable tablefunc extension (required for crosstab)
+CREATE EXTENSION IF NOT EXISTS tablefunc;
+
+-- Step 2: Create EmployeeSales Table
+DROP TABLE IF EXISTS EmployeeSales;
+CREATE TABLE EmployeeSales (
+    employee_name TEXT,
+    quarter TEXT,
+    sales INT
+);
+
+-- Step 3: Insert Sample Data
+INSERT INTO EmployeeSales (employee_name, quarter, sales) VALUES
+('Alice', 'Q1', 5000),
+('Alice', 'Q2', 7000),
+('Alice', 'Q3', 6000),
+('Alice', 'Q4', 8000),
+('Bob', 'Q1', 4000),
+('Bob', 'Q2', 5000),
+('Bob', 'Q3', 7000),
+('Bob', 'Q4', 9000);
+
+-- Step 4: Pivot (Convert Rows to Columns)
+SELECT *
+FROM crosstab(
+    'SELECT employee_name, quarter, sales 
+     FROM EmployeeSales 
+     ORDER BY employee_name, quarter'
+) AS ct(employee_name TEXT, Q1 INT, Q2 INT, Q3 INT, Q4 INT);
+
+-- Step 5: Unpivot (Convert Columns to Rows)
+WITH pivoted AS (
+    SELECT * FROM crosstab(
+        'SELECT employee_name, quarter, sales 
+         FROM EmployeeSales 
+         ORDER BY employee_name, quarter'
+    ) AS ct(employee_name TEXT, Q1 INT, Q2 INT, Q3 INT, Q4 INT)
+)
+SELECT employee_name, 'Q1' AS quarter, Q1 AS sales FROM pivoted
+UNION ALL
+SELECT employee_name, 'Q2', Q2 FROM pivoted
+UNION ALL
+SELECT employee_name, 'Q3', Q3 FROM pivoted
+UNION ALL
+SELECT employee_name, 'Q4', Q4 FROM pivoted;
